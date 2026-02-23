@@ -48,9 +48,24 @@ for config_path in "${SITES[@]}"; do
       if wp plugin is-installed "$p" --allow-root >/dev/null 2>&1; then
         echo "   [FOUND] $p -> deactivate & delete" | tee -a "$LOG_FILE"
 
-        # deactivate ก่อนเสมอ (กันลบพัง)
-        wp plugin deactivate "$p" --allow-root >> "$LOG_FILE" 2>&1 || true
-        wp plugin delete "$p" --allow-root >> "$LOG_FILE" 2>&1 || true
+        # deactivate ก่อนเสมอ
+        wp plugin deactivate "$p" --allow-root --quiet >> "$LOG_FILE" 2>&1 || true
+        wp plugin delete "$p" --allow-root --yes --quiet >> "$LOG_FILE" 2>&1 || true
+
+        # Fallback: ถ้ายังลบไม่ออก (permission) ให้ลบโฟลเดอร์ปลั๊กอินตรง ๆ
+        if wp plugin is-installed "$p" --allow-root >/dev/null 2>&1; then
+          PLUGIN_DIR="$(wp eval 'echo WP_PLUGIN_DIR;' --allow-root 2>/dev/null)/$p"
+          echo "   [WARN] wp delete failed, force remove: $PLUGIN_DIR" | tee -a "$LOG_FILE"
+
+          # ลอง sudo ก่อน
+          sudo rm -rf "$PLUGIN_DIR" >> "$LOG_FILE" 2>&1 || true
+
+          # ถ้ายังอยู่ ลองแก้ permission แล้วลบอีกที
+          if [ -d "$PLUGIN_DIR" ]; then
+            chmod -R u+rwX "$PLUGIN_DIR" >> "$LOG_FILE" 2>&1 || true
+            rm -rf "$PLUGIN_DIR" >> "$LOG_FILE" 2>&1 || true
+          fi
+        fi
 
         # เช็คซ้ำ
         if wp plugin is-installed "$p" --allow-root >/dev/null 2>&1; then
