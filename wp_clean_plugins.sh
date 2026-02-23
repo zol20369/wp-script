@@ -26,7 +26,7 @@ FAILED=0
 IDX=0
 
 for config_path in "${SITES[@]}"; do
-  ((IDX++))
+  ((++IDX))
   SITE_PATH="$(dirname "$config_path")"
 
   (
@@ -72,9 +72,9 @@ for config_path in "${SITES[@]}"; do
 
   rc=$?
   if [ $rc -eq 0 ]; then
-    ((SUCCESS++))
+    ((++SUCCESS))
   else
-    ((FAILED++))
+    ((++FAILED))
     echo "[FAIL] Site path: $SITE_PATH" | tee -a "$LOG_FILE"
   fi
 done
