@@ -58,7 +58,9 @@ for config_path in "${SITES[@]}"; do
           echo "   [WARN] wp delete failed, force remove: $PLUGIN_DIR" | tee -a "$LOG_FILE"
 
           # ลอง sudo ก่อน
-          sudo rm -rf "$PLUGIN_DIR" >> "$LOG_FILE" 2>&1 || true
+          # ไม่ใช้ sudo (Cloudways มักถามรหัส)
+            chmod -R u+rwX "$PLUGIN_DIR" >> "$LOG_FILE" 2>&1 || true
+            rm -rf "$PLUGIN_DIR" >> "$LOG_FILE" 2>&1 || true
 
           # ถ้ายังอยู่ ลองแก้ permission แล้วลบอีกที
           if [ -d "$PLUGIN_DIR" ]; then
