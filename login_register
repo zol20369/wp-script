@@ -1,10 +1,10 @@
 #!/bin/bash
-# login_register - Pro Version
-# ✅ Update only target links in pages: login / register / contact-us
-# ✅ Optional: Blocksy Shortcut Bar replace in wp_options
-# ✅ Optional: Global DB replace (all tables)
-# ✅ NEW: Dry Run mode (-D) : ค้นหาอย่างเดียว ไม่แก้จริง
-# ✅ NEW: Single domain filter (-S) : ทำเฉพาะ 1 โดเมน
+# zol2o - Pro Version (Optimized for Blocksy & Global Search)
+# ✅ Page mode: replace only old_url -> new_url inside page content (login/register/contact-us)
+# ✅ Blocksy shortcut bar replace (wp_options.option_value)
+# ✅ Global DB replace (all tables)
+# ✅ NEW: -D Dry Run (no changes)
+# ✅ NEW: -S Single domain filter (only 1 site by wp option home)
 
 LOGIN_REDIRECT_URL=""
 REGISTER_REDIRECT_URL=""
@@ -35,9 +35,6 @@ if [ -z "$LOGIN_REDIRECT_URL" ] && [ -z "$REGISTER_REDIRECT_URL" ] && [ -z "$NEW
   echo "  $0 -O old_base_url -L new_login_url -R new_register_url -C new_contact_url [-S site_home] [-D]"
   echo "  $0 -O old_url -N new_url            # Global DB replace (all tables) [-S site_home] [-D]"
   echo "  $0 -F target_url -O search_url      # Blocksy Shortcut Bar replace (wp_options) [-S site_home] [-D]"
-  echo ""
-  echo "Examples:"
-  echo "  $0 -O \"https://old.com\" -L \"https://new.com/login\" -R \"https://new.com/register\" -C \"https://new.com/contact-us\" -S \"https://site.com\" -D"
   exit 1
 fi
 
@@ -77,14 +74,16 @@ while read -r config_path; do
     echo "------------------------------------------------" | tee -a "$LOG_FILE"
     echo "[$CURRENT_INDEX/$TOTAL_SITES] Site: $DOMAIN ($DISPLAY_NAME)" | tee -a "$LOG_FILE"
 
-    # เลือกเฉพาะ 1 โดเมน (-S)
+    # เลือกเฉพาะ 1 โดเมน (-S) ต้องตรงกับค่า home แบบเป๊ะ
     if [ -n "$ONLY_DOMAIN" ] && [ "$DOMAIN" != "$ONLY_DOMAIN" ]; then
       echo "    [SKIP] Not target domain (-S $ONLY_DOMAIN)" | tee -a "$LOG_FILE"
       exit 0
     fi
 
+    # Escape string for safe sed replacement
     sed_escape() { printf '%s' "$1" | sed -e 's/[\/&|\\]/\\&/g'; }
 
+    # Find WP page ID by slug or slug-2 (published pages)
     find_page_id() {
       local slug="$1"
       wp post list --post_type=page --post_status=publish \
@@ -158,19 +157,19 @@ while read -r config_path; do
     # ---------------- RUN LOGIC ----------------
 
     # ถ้า -O เป็น base (เช่น https://old.com) ให้ประกอบเป็น /login /register /contact-us อัตโนมัติ
-    # (ตัด / ท้ายออกก่อน)
     OLD_BASE="${OLD_URL_TARGET%/}"
 
     [ -n "$LOGIN_REDIRECT_URL" ]    && replace_in_page_content "login"      "Login"    "${OLD_BASE}/login"      "$LOGIN_REDIRECT_URL"
     [ -n "$REGISTER_REDIRECT_URL" ] && replace_in_page_content "register"   "Register" "${OLD_BASE}/register"   "$REGISTER_REDIRECT_URL"
     [ -n "$NEW_CONTACT_URL" ]       && replace_in_page_content "contact-us" "Contact"  "${OLD_BASE}/contact-us" "$NEW_CONTACT_URL"
 
+    # Blocksy shortcut bar
     [ -n "$FIX_SHORTCUT_URL" ] && update_shortcuts_bar "$FIX_SHORTCUT_URL" "$OLD_URL_TARGET"
 
     # Global replace ทำเฉพาะตอนมี -N
     [ -n "$NEW_URL_VALUE" ] && update_option_url "$OLD_URL_TARGET" "$NEW_URL_VALUE"
 
-    # Cache (ไม่จำเป็นใน dry-run แต่ทำให้เห็นพฤติกรรมคงที่)
+    # Cache (ไม่จำเป็นใน dry-run)
     if [ "$DRY_RUN" -eq 1 ]; then
       echo "    [DRY] CACHE would flush" | tee -a "$LOG_FILE"
     else
