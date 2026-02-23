@@ -1,7 +1,7 @@
 #!/bin/bash
 # zol2o - Full WordPress Report Mode (Fixed & safer)
 
-BASE_DIR="$HOME/applications"
+BASE_DIR="/home/master/applications"
 LOG_FILE="$HOME/wp_report.log"
 CSV_FILE="$HOME/wp_full_report.csv"
 
