@@ -1,1 +1,59 @@
 
+#!/bin/bash
+# zol2o - Targeted replace only for /login /register /contact-us in wp_options
+
+OLD_URL_TARGET=""
+NEW_URL_VALUE=""
+
+while getopts "O:N:" opt; do
+  case $opt in
+    O) OLD_URL_TARGET="$OPTARG" ;;
+    N) NEW_URL_VALUE="$OPTARG" ;;
+    \?) exit 1 ;;
+  esac
+done
+
+if [ -z "$OLD_URL_TARGET" ] || [ -z "$NEW_URL_VALUE" ]; then
+    echo "Usage: $0 -O old_url -N new_url"
+    exit 1
+fi
+
+BASE_DIR="$HOME"
+LOG_FILE="$HOME/update_wp.log"
+
+> "$LOG_FILE"
+echo "------ Update started at $(date) ------" >> "$LOG_FILE"
+
+ALL_SITES_LIST=$(find -L "$BASE_DIR" -name "wp-config.php" ! -path "*/.*")
+
+while read -r config_path; do
+    [ -z "$config_path" ] && continue
+
+    SITE_PATH=$(dirname "$config_path")
+
+    (
+        cd "$SITE_PATH" || exit 1
+
+        old_url="${OLD_URL_TARGET%/}"
+        new_url="${NEW_URL_VALUE%/}"
+
+        echo "Processing: $SITE_PATH" | tee -a "$LOG_FILE"
+
+        for path in /login /register /contact-us; do
+            echo "  Replace ${old_url}${path} -> ${new_url}${path}" | tee -a "$LOG_FILE"
+
+            wp search-replace "${old_url}${path}" "${new_url}${path}" wp_options \
+                --include-columns=option_value \
+                --precise \
+                --allow-root >> "$LOG_FILE" 2>&1
+        done
+
+        wp cache flush --allow-root &>/dev/null
+        wp varnish purge --allow-root &>/dev/null 2>&1
+
+        exit 0
+    )
+
+done <<< "$ALL_SITES_LIST"
+
+echo "Done!"
